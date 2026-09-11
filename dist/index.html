@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="輸入需求、工時與各站製程資料，即時計算 Takt、產能、WIP、瓶頸與 VSM。" />
+    <title>VSM 產線分析工具</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">V</div>
+      <div>
+        <p class="eyebrow">VALUE STREAM MANAGEMENT</p>
+        <h1>VSM 產線分析工具</h1>
+      </div>
+      <div class="top-actions">
+        <span class="live-indicator"><i></i>即時計算</span>
+        <button class="button export-button excel" id="exportExcelButton" type="button">匯出 Excel</button>
+        <button class="button export-button pdf" id="exportPdfButton" type="button">匯出 PDF</button>
+        <button class="button secondary" id="resetButton" type="button">恢復範例</button>
+        <span class="export-status" id="exportStatus" role="status" aria-live="polite"></span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="panel input-panel" aria-labelledby="basic-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-index">01</p>
+            <h2 id="basic-title">生產條件</h2>
+          </div>
+          <p>修改欄位後，結果立即更新</p>
+        </div>
+        <div class="input-grid" id="globalInputs">
+          <label class="field field-wide">
+            <span>產線／機種</span>
+            <input id="lineName" type="text" maxlength="40" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>月需求 <small>pcs</small></span>
+            <input id="monthlyDemand" type="number" min="1" step="1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            <span>工作天 <small>天／月</small></span>
+            <input id="workDays" type="number" min="1" max="31" step="1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            <span>班別 <small>班／日</small></span>
+            <input id="shifts" type="number" min="1" max="6" step="1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            <span>每班工時 <small>hr</small></span>
+            <input id="hoursPerShift" type="number" min="0.1" max="24" step="0.1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            <span>每班休息 <small>min</small></span>
+            <input id="breakMinutes" type="number" min="0" step="1" inputmode="decimal" />
+          </label>
+          <label class="field">
+            <span>計畫稼動率 <small>%</small></span>
+            <input id="availability" type="number" min="1" max="100" step="0.1" inputmode="decimal" />
+          </label>
+        </div>
+        <p class="validation-message" id="validationMessage" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="kpi-section" aria-labelledby="result-title">
+        <div class="section-heading inverse">
+          <div>
+            <p class="section-index">02</p>
+            <h2 id="result-title">即時結果</h2>
+          </div>
+          <p id="lineTitle">RX59 流線</p>
+        </div>
+        <div class="kpi-grid" id="kpiGrid" aria-live="polite"></div>
+      </section>
+
+      <section class="panel vsm-panel" aria-labelledby="vsm-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-index">03</p>
+            <h2 id="vsm-title">現況 VSM</h2>
+          </div>
+          <div class="legend" aria-label="圖例">
+            <span><i class="dot red"></i>現況 WIP</span>
+            <span><i class="dot blue"></i>目標 WIP</span>
+            <span><i class="dot amber"></i>瓶頸站</span>
+          </div>
+        </div>
+        <div class="vsm-scroll" tabindex="0" aria-label="可橫向捲動的價值流程圖">
+          <div class="vsm-canvas" id="vsmCanvas"></div>
+        </div>
+      </section>
+
+      <section class="panel station-panel" aria-labelledby="station-title">
+        <div class="section-heading station-heading">
+          <div>
+            <p class="section-index">04</p>
+            <h2 id="station-title">各站製程資料</h2>
+          </div>
+          <div class="station-actions">
+            <a class="button template-button" href="./VSM_station_import_template.xlsx" download="VSM站別匯入範本.xlsx">下載匯入範本</a>
+            <button class="button import-button" id="importExcelButton" type="button">匯入 Excel</button>
+            <input id="stationImportFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden />
+            <button class="button primary" id="addStationButton" type="button">新增站別</button>
+          </div>
+        </div>
+        <div class="station-import-note">
+          <span>批次匯入：下載範本、填寫「站別資料」後匯入。匯入會取代目前站別，空白列會自動略過。</span>
+          <strong id="stationImportStatus" role="status" aria-live="polite"></strong>
+        </div>
+        <div class="station-help">
+          <span>CT、MCT、OCT 單位皆為分鐘</span>
+          <span>目標 WIP＝緩衝分鐘 ÷ Takt</span>
+          <span>最多 10 個站別</span>
+        </div>
+        <div class="station-editors" id="stationEditors"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>計算結果供產線規劃與改善討論使用，請以現場實測值校正。</p>
+    </footer>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
