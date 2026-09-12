@@ -156,9 +156,9 @@ h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.75rem); letter-spacing: .02em; 
 
 .station-heading { align-items: center; }
 .station-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-.station-import-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -3px 0 12px; padding: 10px 12px; border-left: 4px solid var(--blue); background: #f3f8fc; color: #4d6173; font-size: .8rem; }
-.station-import-note strong { flex: 0 0 auto; color: var(--green); }
-.station-import-note strong.error { color: var(--red); }
+.station-import-status { margin: -3px 0 12px; padding: 8px 11px; border-left: 4px solid var(--green); background: #f0f9f5; color: var(--green); font-size: .8rem; font-weight: 800; }
+.station-import-status:empty { display: none; }
+.station-import-status.error { border-left-color: var(--red); background: #fff3f3; color: var(--red); }
 .station-help { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: -3px 0 15px; color: var(--muted); font-size: .8rem; }
 .station-editors { display: grid; gap: 12px; }
 .station-editor { border: 1px solid var(--line); border-left: 5px solid var(--blue); border-radius: 7px; background: #fbfdff; padding: 13px; }
