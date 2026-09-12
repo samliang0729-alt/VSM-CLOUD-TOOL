@@ -171,6 +171,7 @@ h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.75rem); letter-spacing: .02em; 
 .station-field input { min-width: 0; width: 100%; min-height: 38px; border: 1px solid #bdccd8; border-radius: 5px; background: #fff9d9; padding: 7px 8px; font-weight: 700; color: #155b93; }
 
 footer { padding: 0 20px 30px; text-align: center; color: var(--muted); font-size: .78rem; }
+.print-report { display: none; }
 
 @media (max-width: 1040px) {
   .workspace { grid-template-columns: 1fr; }
@@ -198,17 +199,68 @@ footer { padding: 0 20px 30px; text-align: center; color: var(--muted); font-siz
   .timeline-total { grid-template-columns: 1fr; }
 }
 
-@page { size: A4 landscape; margin: 9mm; }
+@page { size: A4 landscape; margin: 7mm; }
 
 @media print {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { background: white; }
-  .top-actions, .input-panel, .station-panel, footer { display: none !important; }
-  .topbar { min-height: 58px; padding: 10px 16px; box-shadow: none; }
-  .brand-mark { width: 38px; height: 38px; }
-  .workspace { display: block; width: 100%; margin: 0; }
-  .kpi-section, .vsm-panel { box-shadow: none; margin-bottom: 12px; }
-  .vsm-scroll { overflow: visible; transform-origin: top left; }
-  .vsm-canvas { zoom: var(--print-scale, .78); }
-  .vsm-panel { break-inside: avoid; }
+  html, body { width: 100%; margin: 0; background: white; color: var(--ink); }
+  body > .topbar, body > .workspace, body > footer { display: none !important; }
+  .print-report { display: block !important; }
+  .print-page {
+    width: 100%;
+    break-after: page;
+    page-break-after: always;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+    overflow: hidden;
+  }
+  .print-page:last-child { break-after: auto; page-break-after: auto; }
+  .print-report-header { min-height: 42px; display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 9px; padding-bottom: 6px; border-bottom: 3px solid var(--navy); }
+  .print-brand { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 4px 11px 4px 11px; color: white; background: var(--navy); font: 800 1.05rem/1 Georgia, serif; }
+  .print-report-header p { margin: 0 0 1px; color: #5c7185; font-size: 7.5pt; letter-spacing: .08em; }
+  .print-report-header h1 { margin: 0; color: var(--navy); font-size: 14pt; }
+  .print-page-meta { text-align: right; color: #566a7d; font-size: 7.5pt; line-height: 1.45; }
+  .print-summary { margin-top: 7px; break-inside: avoid-page; page-break-inside: avoid; }
+  .print-section-title { min-height: 23px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 5px; padding-bottom: 3px; border-bottom: 1.5px solid var(--navy); }
+  .print-section-title h2 { margin: 0; color: var(--navy); font-size: 10pt; }
+  .print-section-title span { color: #627486; font-size: 7pt; }
+  .print-kpi-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1px; border: 1px solid #bfccd7; background: #bfccd7; }
+  .print-kpi { min-width: 0; min-height: 50px; display: flex; flex-direction: column; justify-content: space-between; gap: 3px; padding: 5px 6px; background: white; }
+  .print-kpi.warning { background: #fff8e5; }
+  .print-kpi.danger { background: #fff0f0; }
+  .print-kpi > span { color: #627486; font-size: 6.5pt; font-weight: 700; }
+  .print-kpi strong { min-width: 0; color: var(--navy); font-size: 9pt; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .print-kpi.danger strong { color: var(--red); }
+  .print-kpi small { display: block; margin-top: 2px; color: #627486; font-size: 5.8pt; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .print-vsm-section { margin-top: 8px; break-inside: avoid-page; page-break-inside: avoid; }
+  .print-info-flow { display: grid; grid-template-columns: 112px minmax(120px, 1fr) 135px minmax(120px, 1fr) 112px; align-items: center; gap: 7px; margin: 0 0 7px; }
+  .print-info-flow .entity { min-height: 34px; padding: 4px 5px 2px; font-size: 7.5pt; border-width: 1.5px; }
+  .print-info-flow .signal { height: 12px; border-top-width: 1.5px; }
+  .print-process-flow { width: 100%; min-height: 196px; display: flex; align-items: stretch; overflow: hidden; break-inside: avoid-page; page-break-inside: avoid; }
+  .print-process-flow .process-node { width: 168px; flex: 0 0 168px; break-inside: avoid-page; page-break-inside: avoid; }
+  .print-process-flow .inventory-node { width: 68px; flex: 0 0 68px; grid-template-rows: 26px 1fr; break-inside: avoid-page; page-break-inside: avoid; }
+  .print-process-flow .flow-arrow { height: 26px; font-size: 1rem; }
+  .print-process-flow .process-card { box-shadow: 2px 2px 0 #dfe6ec; }
+  .print-process-flow .process-card.bottleneck { box-shadow: 2px 2px 0 #ffe3ac; }
+  .print-process-flow .process-title { min-height: 38px; padding: 4px 6px; }
+  .print-process-flow .process-title strong { font-size: 7.5pt; }
+  .print-process-flow .process-title span { font-size: 6pt; }
+  .print-process-flow .process-metrics { padding: 3px 6px 4px; }
+  .print-process-flow .process-metrics div { min-height: 18px; gap: 4px; }
+  .print-process-flow .process-metrics dt, .print-process-flow .process-metrics dd { font-size: 6.1pt; }
+  .print-process-flow .status-badge { min-height: 19px; margin: 4px 6px 6px; font-size: 6pt; }
+  .print-process-flow .triangle-icon { width: 39px; height: 30px; }
+  .print-process-flow .wip-current { font-size: 7.3pt; }
+  .print-process-flow .wip-target { margin-top: 1px; font-size: 5.7pt; }
+  .print-process-flow .inventory-label { margin-top: 2px; font-size: 5.3pt; }
+  .print-timeline { margin-top: 7px; padding-top: 5px; border-top: 5px solid var(--navy); break-inside: avoid-page; page-break-inside: avoid; }
+  .print-timeline .timeline-title { margin: 0 0 4px; font-size: 7pt; }
+  .print-timeline .timeline-track { min-height: 38px; }
+  .print-timeline .time-va { width: 168px; flex: 0 0 168px; padding: 4px 3px; border-top-width: 2px; font-size: 6pt; }
+  .print-timeline .time-nva { width: 68px; flex: 0 0 68px; padding: 4px 2px; border-bottom-width: 2px; font-size: 5.8pt; }
+  .print-timeline .timeline-total { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 5px; }
+  .print-timeline .timeline-total div { min-height: 30px; padding: 5px 7px; }
+  .print-timeline .timeline-total span { font-size: 6pt; }
+  .print-timeline .timeline-total strong { font-size: 7.2pt; }
+  .print-continuation { min-height: 20px; display: flex; align-items: center; justify-content: flex-end; margin-top: 4px; padding: 3px 7px; color: #50677b; background: #eef5fa; font-size: 6.2pt; font-weight: 700; }
 }
