@@ -22,7 +22,7 @@ const globalFields = ["lineName", "monthlyDemand", "workDays", "shifts", "hoursP
 const stationFields = [
   ["id", "站別", "text", 0.1], ["name", "製程名稱", "text", 0.1], ["ct", "CT", "number", 0.1],
   ["mct", "MCT", "number", 0.1], ["octa", "OCTa", "number", 0.1], ["octb", "OCTb", "number", 0.1],
-  ["octc", "OCTc", "number", 0.1], ["people", "人數", "number", 1], ["machines", "並行機台", "number", 1],
+  ["octc", "C/O 換線／切換時間", "number", 0.1], ["people", "人數", "number", 1], ["machines", "並行機台", "number", 1],
   ["currentWip", "現況 WIP", "number", 1], ["bufferMin", "緩衝分鐘", "number", 1], ["yieldRate", "良率 %", "number", 0.1]
 ];
 
@@ -117,7 +117,8 @@ function processCard(station, isBottleneck) {
         <dl class="process-metrics">
           <div><dt>CT</dt><dd>${format(n(station.ct), 1)} min</dd></div>
           <div><dt>MCT</dt><dd>${format(n(station.mct), 1)} min</dd></div>
-          <div><dt>OCT a / b / c</dt><dd>${format(n(station.octa), 1)} / ${format(n(station.octb), 1)} / ${format(n(station.octc), 1)}</dd></div>
+          <div><dt>OCT a / b</dt><dd>${format(n(station.octa), 1)} / ${format(n(station.octb), 1)}</dd></div>
+          <div><dt>C/O Changeover Time</dt><dd>${format(n(station.octc), 1)} min</dd></div>
           <div><dt>人數／機台</dt><dd>${formatInt(n(station.people))}／${formatInt(n(station.machines))}</dd></div>
           <div><dt>月產能</dt><dd>${formatInt(station.capacity)} pcs</dd></div>
           <div><dt>負荷率</dt><dd class="load-value">${format(station.load * 100, 1)}%</dd></div>
@@ -263,7 +264,7 @@ const stationImportAliases = {
   mct: ["MCT (min)", "MCT"],
   octa: ["OCTa (min)", "OCTa"],
   octb: ["OCTb (min)", "OCTb"],
-  octc: ["OCTc (min)", "OCTc"],
+  octc: ["C/O Changeover Time (min) / 換線／切換時間", "C/O Changeover Time (min) / 換線時間", "C/O Changeover Time (min)", "C/O Changeover Time", "C/O (min)", "C/O", "Changeover Time", "換線時間", "切換時間", "OCTc (min)", "OCTc"],
   people: ["Operators / 人數", "人數", "作業人數", "operators", "people"],
   machines: ["Machines / 並行機台", "並行機台", "機台數", "設備數", "machines"],
   currentWip: ["Current WIP (pcs) / 現況 WIP", "現況 WIP (pcs)", "現況WIP", "WIP", "現場WIP", "currentwip"],
@@ -334,7 +335,7 @@ function parseStationWorkbook(workbook) {
     const mct = readImportedNumber(row, headerMap.mct, "MCT", excelRow, 0);
     const octa = readImportedNumber(row, headerMap.octa, "OCTa", excelRow, 0);
     const octb = readImportedNumber(row, headerMap.octb, "OCTb", excelRow, 0);
-    const octc = readImportedNumber(row, headerMap.octc, "OCTc", excelRow, 0);
+    const octc = readImportedNumber(row, headerMap.octc, "C/O 換線／切換時間", excelRow, 0);
     const people = readImportedNumber(row, headerMap.people, "人數", excelRow, 1);
     const machines = readImportedNumber(row, headerMap.machines, "並行機台", excelRow, 1);
     const currentWip = readImportedNumber(row, headerMap.currentWip, "現況 WIP", excelRow, 0);
@@ -554,7 +555,7 @@ function exportExcel() {
     ["產能判定", status, ""]
   ];
 
-  const stationHeaders = ["順序", "站別", "製程名稱", "CT (min)", "MCT (min)", "OCTa (min)", "OCTb (min)", "OCTc (min)", "人數", "並行機台", "現況 WIP (pcs)", "緩衝 (min)", "良率", "月產能 (pcs)", "負荷率", "目標 WIP (pcs)", "現況等待 (hr)", "目標等待 (hr)", "狀態"];
+  const stationHeaders = ["順序", "站別", "製程名稱", "CT (min)", "MCT (min)", "OCTa (min)", "OCTb (min)", "C/O Changeover Time (min) / 換線／切換時間", "人數", "並行機台", "現況 WIP (pcs)", "緩衝 (min)", "良率", "月產能 (pcs)", "負荷率", "目標 WIP (pcs)", "現況等待 (hr)", "目標等待 (hr)", "狀態"];
   const stationRows = calc.stations.map((station, index) => [
     index + 1, station.id, station.name, n(station.ct), n(station.mct), n(station.octa), n(station.octb), n(station.octc),
     n(station.people), n(station.machines), n(station.currentWip), n(station.bufferMin), n(station.yieldRate) / 100,
