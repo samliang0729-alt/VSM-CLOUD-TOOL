@@ -16,6 +16,8 @@ const sampleState = {
 
 let state = structuredClone(sampleState);
 
+const MAX_STATIONS = 20;
+
 const globalFields = ["lineName", "monthlyDemand", "workDays", "shifts", "hoursPerShift", "breakMinutes", "availability"];
 const stationFields = [
   ["id", "站別", "text", 0.1], ["name", "製程名稱", "text", 0.1], ["ct", "CT", "number", 0.1],
@@ -85,9 +87,9 @@ function statusClass(status) {
   return status === "產能不足" ? "status-over" : status === "接近滿載" ? "status-near" : "status-normal";
 }
 
-function renderKpis(calc) {
+function getKpiCards(calc) {
   const status = calc.bottleneck?.load > 1 ? "產能不足" : calc.bottleneck?.load >= .85 ? "接近滿載" : calc.bottleneck ? "產能正常" : "資料不足";
-  const cards = [
+  return [
     ["日需求", format(calc.dailyDemand, 1), "pcs", ""],
     ["需求 Takt", format(calc.takt, 1), "min/pcs", ""],
     ["瓶頸站", calc.bottleneck?.id || "—", calc.bottleneck?.name || "", calc.bottleneck?.load > 1 ? "danger" : calc.bottleneck?.load >= .85 ? "warning" : ""],
@@ -97,6 +99,10 @@ function renderKpis(calc) {
     ["現況 Lead Time", format(calc.leadTime, 1), "hr", ""],
     ["產能判定", status, calc.bottleneck && Number.isFinite(calc.bottleneck.load) ? `${format(calc.bottleneck.load * 100, 1)}% 負荷` : "", status === "產能不足" ? "danger" : status === "接近滿載" ? "warning" : ""]
   ];
+}
+
+function renderKpis(calc) {
+  const cards = getKpiCards(calc);
   document.getElementById("kpiGrid").innerHTML = cards.map(([label, value, unit, tone]) => `
     <article class="kpi ${tone}"><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)} <span>${escapeHtml(unit)}</span></strong></article>
   `).join("");
@@ -166,7 +172,7 @@ function renderStationEditors() {
     <article class="station-editor" data-index="${index}">
       <div class="station-editor-head">
         <span class="station-number"><i>${index + 1}</i>${escapeHtml(station.id || "新站別")}</span>
-        <button class="button danger remove-station" type="button" data-index="${index}" ${state.stations.length === 1 ? "disabled" : ""}>刪除</button>
+        <button class="button danger remove-station" type="button" data-index="${index}" aria-label="刪除第 ${index + 1} 站 ${escapeHtml(station.id || "新站別")}" ${state.stations.length === 1 ? "disabled title=\"至少保留 1 個站別\"" : ""}>刪除</button>
       </div>
       <div class="station-input-grid">
         ${stationFields.map(([key, label, type, step]) => `<label class="station-field"><span>${label}</span><input data-field="${key}" type="${type}" ${type === "number" ? `min="0" step="${step}" inputmode="decimal"` : ""} value="${escapeHtml(station[key])}" aria-label="第 ${index + 1} 站 ${label}"></label>`).join("")}
@@ -193,6 +199,7 @@ function validate(calc) {
   else if (n(state.workDays) <= 0) message = "工作天必須大於 0。";
   else if (n(state.hoursPerShift) * 60 <= n(state.breakMinutes)) message = "每班休息時間不可大於或等於每班工時。";
   else if (!state.stations.length) message = "請至少新增一個站別。";
+  else if (state.stations.length > MAX_STATIONS) message = `站別最多 ${MAX_STATIONS} 個。`;
   else if (state.stations.some((s) => n(s.ct) <= 0)) message = "每個站別的 CT 必須大於 0。";
   document.getElementById("validationMessage").textContent = message;
   document.getElementById("globalInputs").toggleAttribute("data-invalid", !calc.valid);
@@ -205,7 +212,11 @@ function updateResults() {
   validate(calc);
   renderKpis(calc);
   renderVsm(calc);
-  document.getElementById("addStationButton").disabled = state.stations.length >= 10;
+  const addButton = document.getElementById("addStationButton");
+  const atStationLimit = state.stations.length >= MAX_STATIONS;
+  addButton.disabled = atStationLimit;
+  addButton.textContent = atStationLimit ? `已達 ${MAX_STATIONS} 站` : "新增站別";
+  document.getElementById("stationCountStatus").textContent = `目前 ${state.stations.length} / ${MAX_STATIONS} 站（至少保留 1 站）`;
 }
 
 function bindGlobals() {
@@ -341,7 +352,7 @@ function parseStationWorkbook(workbook) {
   }
 
   if (!stations.length) throw new Error("沒有找到可匯入的站別資料。請至少填寫 1 個站別。");
-  if (stations.length > 10) throw new Error(`範本共有 ${stations.length} 個站別，目前最多可匯入 10 個。`);
+  if (stations.length > MAX_STATIONS) throw new Error(`範本共有 ${stations.length} 個站別，目前最多可匯入 ${MAX_STATIONS} 個。`);
   const ids = stations.map((station) => station.id.toLocaleLowerCase("zh-TW"));
   if (new Set(ids).size !== ids.length) throw new Error("站別代碼不可重複，請檢查「站別」欄位。");
   return stations;
@@ -402,18 +413,100 @@ function dateStamp() {
   return `${year}-${month}-${day}`;
 }
 
+const printStationsPerPage = 4;
+
+function groupStationsForPrint(stations) {
+  const groups = [];
+  for (let index = 0; index < stations.length; index += printStationsPerPage) {
+    groups.push(stations.slice(index, index + printStationsPerPage));
+  }
+  return groups;
+}
+
+function printKpiMarkup(calc) {
+  return getKpiCards(calc).map(([label, value, unit, tone]) => `
+    <article class="print-kpi ${tone}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}<small>${escapeHtml(unit)}</small></strong>
+    </article>
+  `).join("");
+}
+
+function printStationFlowMarkup(stations, calc) {
+  return stations.map((station) => {
+    const isBottleneck = calc.bottleneck?.index === station.index;
+    const hasNextStation = station.index < calc.stations.length - 1;
+    return processCard(station, isBottleneck) + (hasNextStation ? inventoryNode(station) : "");
+  }).join("");
+}
+
+function printTimelineMarkup(stations, calc) {
+  return stations.map((station) => {
+    const hasNextStation = station.index < calc.stations.length - 1;
+    return `
+      <div class="time-va">VA ${format(n(station.ct), 1)} min</div>
+      ${hasNextStation ? `<div class="time-nva">NVA ${format(station.currentWait, 1)} hr</div>` : ""}
+    `;
+  }).join("");
+}
+
+function buildPrintReport(calc) {
+  const groups = groupStationsForPrint(calc.stations);
+  const totalPages = groups.length;
+  const report = document.getElementById("printReport");
+  report.innerHTML = groups.map((stations, pageIndex) => {
+    const firstStation = stations[0]?.index + 1;
+    const lastStation = stations.at(-1)?.index + 1;
+    const isFirstPage = pageIndex === 0;
+    const isLastPage = pageIndex === totalPages - 1;
+    const nextStation = !isLastPage ? groups[pageIndex + 1][0] : null;
+    return `
+      <section class="print-page" data-page="${pageIndex + 1}">
+        <header class="print-report-header">
+          <div class="print-brand" aria-hidden="true">V</div>
+          <div><p>VALUE STREAM MANAGEMENT</p><h1>${escapeHtml(state.lineName || "未命名產線")}</h1></div>
+          <div class="print-page-meta">第 ${pageIndex + 1} / ${totalPages} 頁<br>${dateStamp()}</div>
+        </header>
+        ${isFirstPage ? `
+          <section class="print-summary">
+            <div class="print-section-title"><h2>即時結果</h2><span>生產條件與現況計算</span></div>
+            <div class="print-kpi-grid">${printKpiMarkup(calc)}</div>
+          </section>
+        ` : ""}
+        <section class="print-vsm-section">
+          <div class="print-section-title"><h2>現況 VSM</h2><span>站別 ${firstStation}–${lastStation}，共 ${calc.stations.length} 站</span></div>
+          <div class="print-info-flow">
+            <div class="entity">供應商</div><div class="signal" aria-hidden="true"></div><div class="entity control">生產管制</div><div class="signal" aria-hidden="true"></div><div class="entity">客戶</div>
+          </div>
+          <div class="print-process-flow">${printStationFlowMarkup(stations, calc)}</div>
+          <div class="timeline print-timeline">
+            <p class="timeline-title">價值流時間軸</p>
+            <div class="timeline-track">${printTimelineMarkup(stations, calc)}</div>
+            ${isLastPage ? `
+              <div class="timeline-total">
+                <div><span>總 VA 時間</span><strong>${format(calc.vaMinutes, 1)} min</strong></div>
+                <div><span>總 NVA 等待</span><strong>${format(calc.nvaHours, 1)} hr</strong></div>
+                <div><span>Lead Time</span><strong>${format(calc.leadTime, 1)} hr</strong></div>
+              </div>
+            ` : `<div class="print-continuation">流程接續下一頁：${escapeHtml(nextStation?.id || "下一站")}</div>`}
+          </div>
+        </section>
+      </section>
+    `;
+  }).join("");
+  return totalPages;
+}
+
 function exportPdf() {
   const calc = calculate();
   if (!validate(calc)) {
     setExportStatus("請先修正輸入資料，再匯出 PDF。", true);
     return;
   }
-  const flowWidth = calc.stations.length * 220 + Math.max(0, calc.stations.length - 1) * 112;
-  const printScale = Math.max(0.32, Math.min(1, 1020 / Math.max(1020, flowWidth)));
-  document.documentElement.style.setProperty("--print-scale", printScale.toFixed(3));
+  const totalPages = buildPrintReport(calc);
   const originalTitle = document.title;
   document.title = `VSM_${safeFileName(state.lineName)}_${dateStamp()}`;
-  setExportStatus("已開啟列印視窗，請選擇「另存為 PDF」。");
+  setExportStatus(`已整理為 ${totalPages} 頁，請在列印視窗選擇「另存為 PDF」。`);
   window.print();
   document.title = originalTitle;
 }
@@ -507,8 +600,10 @@ function exportExcel() {
 }
 
 document.getElementById("addStationButton").addEventListener("click", () => {
-  if (state.stations.length >= 10) return;
-  const next = state.stations.length + 1;
+  if (state.stations.length >= MAX_STATIONS) return;
+  const usedIds = new Set(state.stations.map((station) => String(station.id || "").trim().toLocaleLowerCase("zh-TW")));
+  let next = 1;
+  while (usedIds.has(`op${next * 10}`)) next += 1;
   state.stations.push({ id: `OP${next * 10}`, name: "新製程", ct: 1, mct: 1, octa: 0, octb: 0, octc: 0, people: 1, machines: 1, currentWip: 0, bufferMin: 60, yieldRate: 100 });
   renderAll();
   document.querySelector(".station-editor:last-child")?.scrollIntoView({ behavior: "smooth", block: "center" });
