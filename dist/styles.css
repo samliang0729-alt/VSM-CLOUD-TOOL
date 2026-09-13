@@ -105,6 +105,46 @@ h1 { margin: 0; font-size: clamp(1.25rem, 2vw, 1.75rem); letter-spacing: .02em; 
 .kpi.danger { background: #fff0f0; }
 .kpi.danger strong { color: var(--red); }
 
+.takt-chart-host { padding: 14px 16px 17px; background: #f4f8fb; }
+.takt-chart-card { overflow: hidden; border: 1px solid #cbd9e5; border-radius: 8px; background: white; }
+.takt-chart-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 13px 15px 8px; }
+.takt-chart-heading h3 { margin: 0; color: var(--navy); font-size: .96rem; }
+.takt-chart-heading p { margin: 4px 0 0; color: var(--muted); font-size: .76rem; }
+.takt-overview { flex: 0 0 auto; padding: 5px 9px; border-radius: 999px; font-size: .72rem; }
+.takt-overview.normal { color: var(--green); background: #e9f7f0; }
+.takt-overview.danger { color: #a91f1f; background: #ffe9e9; }
+.takt-chart-legend { display: flex; flex-wrap: wrap; gap: 8px 17px; padding: 0 15px 10px; color: #52687b; font-size: .72rem; font-weight: 700; }
+.takt-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.takt-chart-legend i { width: 18px; height: 8px; display: inline-block; border-radius: 2px; }
+.takt-chart-legend .within { background: var(--blue-2); }
+.takt-chart-legend .excess { background: var(--red); }
+.takt-chart-legend .reference { height: 0; border-top: 2px dashed var(--amber); border-radius: 0; }
+.takt-chart-scroll { overflow-x: auto; padding: 7px 14px 13px; scrollbar-color: #91abc0 #e5edf3; }
+.takt-chart-layout { width: 100%; min-width: var(--takt-chart-width); display: grid; grid-template-columns: 45px minmax(0, 1fr); grid-template-rows: 180px auto; column-gap: 8px; }
+.takt-y-axis { position: relative; color: #6a7c8d; font-size: .68rem; }
+.takt-y-axis span { position: absolute; right: 0; bottom: calc(var(--tick-position) * 1%); transform: translateY(50%); }
+.takt-bars-area { position: relative; border-bottom: 1px solid #9fb1c0; border-left: 1px solid #9fb1c0; }
+.takt-grid-lines { position: absolute; inset: 0; pointer-events: none; }
+.takt-grid-lines i { position: absolute; left: 0; right: 0; bottom: calc(var(--tick-position) * 1%); border-top: 1px solid #e0e8ef; }
+.takt-reference-line { position: absolute; z-index: 2; left: 0; right: 0; bottom: calc(var(--takt-position) * 1%); border-top: 2px dashed var(--amber); pointer-events: none; }
+.takt-reference-line span { position: absolute; right: 4px; bottom: 3px; padding: 2px 5px; border-radius: 3px; color: #8c5508; background: #fff7df; font-size: .66rem; font-weight: 800; }
+.takt-bars-grid, .takt-labels-grid { display: grid; grid-template-columns: repeat(var(--station-count), minmax(48px, 1fr)); gap: 8px; padding: 0 8px; }
+.takt-bars-grid { position: absolute; z-index: 3; inset: 0; align-items: end; }
+.takt-bar-slot { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.takt-bar-stack { width: min(38px, 68%); height: calc(var(--bar-height) * 1%); min-height: 2px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; border-radius: 4px 4px 0 0; box-shadow: 0 0 0 1px rgba(18,103,169,.08); }
+.takt-bar-stack span { display: block; width: 100%; }
+.takt-bar-within { background: linear-gradient(90deg, var(--blue), var(--blue-2)); }
+.takt-bar-excess { background: linear-gradient(90deg, #b71f1f, #e34848); }
+.takt-bar-value { position: absolute; z-index: 4; bottom: calc(var(--bar-height) * 1% + 4px); color: var(--navy); font-size: .67rem; font-weight: 800; white-space: nowrap; }
+.takt-bar-slot.over .takt-bar-value { color: var(--red); }
+.takt-labels-grid { padding-top: 7px; }
+.takt-station-label { min-width: 0; display: grid; gap: 1px; text-align: center; }
+.takt-station-label strong { overflow: hidden; color: var(--navy); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.takt-station-label span { overflow: hidden; color: #65788a; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.takt-station-label small { color: var(--green); font-size: .61rem; font-weight: 800; white-space: nowrap; }
+.takt-station-label.over small { color: var(--red); }
+.takt-chart-empty { margin: 0; padding: 24px 15px; color: var(--muted); font-size: .82rem; text-align: center; }
+
 .legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .78rem; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -188,6 +228,10 @@ footer { padding: 0 20px 30px; text-align: center; color: var(--muted); font-siz
   .input-panel, .vsm-panel, .station-panel { padding: 15px; }
   .input-grid { grid-template-columns: 1fr 1fr; }
   .kpi-grid { grid-template-columns: repeat(2, minmax(120px,1fr)); }
+  .takt-chart-host { padding: 10px; }
+  .takt-chart-heading { display: block; }
+  .takt-overview { display: inline-block; margin-top: 8px; }
+  .takt-chart-layout { grid-template-rows: 165px auto; }
   .section-heading { display: block; }
   .section-heading > p, .legend { margin-top: 8px; }
   .station-heading { display: block; }
@@ -232,6 +276,25 @@ footer { padding: 0 20px 30px; text-align: center; color: var(--muted); font-siz
   .print-kpi strong { min-width: 0; color: var(--navy); font-size: 9pt; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .print-kpi.danger strong { color: var(--red); }
   .print-kpi small { display: block; margin-top: 2px; color: #627486; font-size: 5.8pt; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .print-takt-chart-card { margin-top: 5px; border-radius: 0; }
+  .print-takt-chart-card .takt-chart-heading { align-items: center; padding: 4px 6px 2px; }
+  .print-takt-chart-card .takt-chart-heading h3 { font-size: 7pt; }
+  .print-takt-chart-card .takt-chart-heading p { display: none; }
+  .print-takt-chart-card .takt-overview { padding: 2px 5px; font-size: 5.2pt; }
+  .print-takt-chart-card .takt-chart-legend { gap: 8px; padding: 0 6px 3px; font-size: 4.8pt; }
+  .print-takt-chart-card .takt-chart-legend i { width: 10px; height: 5px; }
+  .print-takt-chart-card .takt-chart-scroll { overflow: visible; padding: 2px 6px 4px; }
+  .print-takt-chart-card .takt-chart-layout { min-width: 0; grid-template-columns: 27px minmax(0, 1fr); grid-template-rows: 64px 15px; column-gap: 3px; }
+  .print-takt-chart-card .takt-y-axis { font-size: 4.5pt; }
+  .print-takt-chart-card .takt-reference-line { border-top-width: 1px; }
+  .print-takt-chart-card .takt-reference-line span { right: 1px; bottom: 1px; padding: 1px 2px; font-size: 4.2pt; }
+  .print-takt-chart-card .takt-bars-grid, .print-takt-chart-card .takt-labels-grid { grid-template-columns: repeat(var(--station-count), minmax(0, 1fr)); gap: 1px; padding: 0 2px; }
+  .print-takt-chart-card .takt-bar-stack { width: min(15px, 70%); }
+  .print-takt-chart-card .takt-bar-value { bottom: calc(var(--bar-height) * 1% + 1px); font-size: 4.2pt; }
+  .print-takt-chart-card .takt-labels-grid { padding-top: 2px; }
+  .print-takt-chart-card .takt-station-label { display: block; }
+  .print-takt-chart-card .takt-station-label strong { font-size: 4.6pt; }
+  .print-takt-chart-card .takt-station-label span, .print-takt-chart-card .takt-station-label small { display: none; }
   .print-vsm-section { margin-top: 8px; break-inside: avoid-page; page-break-inside: avoid; }
   .print-info-flow { display: grid; grid-template-columns: 112px minmax(120px, 1fr) 135px minmax(120px, 1fr) 112px; align-items: center; gap: 7px; margin: 0 0 7px; }
   .print-info-flow .entity { min-height: 34px; padding: 4px 5px 2px; font-size: 7.5pt; border-width: 1.5px; }
