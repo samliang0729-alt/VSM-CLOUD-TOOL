@@ -108,6 +108,104 @@ function renderKpis(calc) {
   `).join("");
 }
 
+function niceChartCeiling(value) {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const normalized = value / magnitude;
+  const step = [1, 2, 2.5, 5, 10].find((candidate) => candidate >= normalized) || 10;
+  return step * magnitude;
+}
+
+function chartTickLabel(value) {
+  return format(value, Math.abs(value) >= 10 ? 0 : 1);
+}
+
+function taktChartMarkup(calc, { print = false } = {}) {
+  const titleId = print ? "print-takt-chart-title" : "takt-chart-title";
+  const chartClass = print ? "takt-chart-card print-takt-chart-card" : "takt-chart-card";
+  if (!calc.valid || !Number.isFinite(calc.takt) || calc.takt <= 0 || !calc.stations.length) {
+    return `
+      <section class="${chartClass}" aria-labelledby="${titleId}">
+        <div class="takt-chart-heading"><div><h3 id="${titleId}">各站 C/T 與需求 Takt 直方圖</h3></div></div>
+        <p class="takt-chart-empty">請完成有效的生產條件與站別 C/T。</p>
+      </section>`;
+  }
+
+  const stationValues = calc.stations.map((station) => Math.max(0, n(station.ct)));
+  const chartMax = niceChartCeiling(Math.max(calc.takt, ...stationValues) * 1.15);
+  const taktPercent = Math.min(100, calc.takt / chartMax * 100);
+  const tickPercents = [0, 25, 50, 75, 100];
+  const overCount = stationValues.filter((ct) => ct > calc.takt).length;
+  const chartWidth = Math.max(580, calc.stations.length * 78);
+
+  const ticks = tickPercents.map((percent) => `
+    <span style="--tick-position:${percent}">${chartTickLabel(chartMax * percent / 100)}</span>
+  `).join("");
+  const gridLines = tickPercents.map((percent) => `<i style="--tick-position:${percent}"></i>`).join("");
+
+  const bars = calc.stations.map((station) => {
+    const ct = Math.max(0, n(station.ct));
+    const within = Math.min(ct, calc.takt);
+    const excess = Math.max(0, ct - calc.takt);
+    const ctPercent = Math.min(100, ct / chartMax * 100);
+    const withinShare = ct > 0 ? within / ct * 100 : 0;
+    const excessShare = ct > 0 ? excess / ct * 100 : 0;
+    const comparison = excess > 0 ? `超出 Takt ${format(excess, 1)} 分鐘` : `低於 Takt ${format(calc.takt - ct, 1)} 分鐘`;
+    return `
+      <div class="takt-bar-slot ${excess > 0 ? "over" : ""}" role="img" aria-label="${escapeHtml(station.id || `站 ${station.index + 1}`)}，C/T ${format(ct, 1)} 分鐘，需求 Takt ${format(calc.takt, 1)} 分鐘，${comparison}">
+        <span class="takt-bar-value" style="--bar-height:${ctPercent}">${format(ct, 1)}</span>
+        <div class="takt-bar-stack" style="--bar-height:${ctPercent}" aria-hidden="true">
+          ${excess > 0 ? `<span class="takt-bar-excess" style="height:${excessShare}%"></span>` : ""}
+          <span class="takt-bar-within" style="height:${withinShare}%"></span>
+        </div>
+      </div>`;
+  }).join("");
+
+  const labels = calc.stations.map((station) => {
+    const ct = Math.max(0, n(station.ct));
+    const excess = Math.max(0, ct - calc.takt);
+    const deltaText = excess > 0 ? `超出 ${format(excess, 1)} min` : `餘裕 ${format(calc.takt - ct, 1)} min`;
+    return `
+      <div class="takt-station-label ${excess > 0 ? "over" : ""}" title="${escapeHtml(station.name || "未命名製程")}">
+        <strong>${escapeHtml(station.id || `站 ${station.index + 1}`)}</strong>
+        <span>${escapeHtml(station.name || "未命名製程")}</span>
+        <small>${deltaText}</small>
+      </div>`;
+  }).join("");
+
+  return `
+    <section class="${chartClass}" aria-labelledby="${titleId}">
+      <div class="takt-chart-heading">
+        <div>
+          <h3 id="${titleId}">各站 C/T 與需求 Takt 直方圖</h3>
+          <p>紅色區段為 C/T 超出需求 Takt 的時間。</p>
+        </div>
+        <strong class="takt-overview ${overCount ? "danger" : "normal"}">${overCount ? `超出 ${overCount} / ${calc.stations.length} 站` : `全部 ${calc.stations.length} 站符合`}</strong>
+      </div>
+      <div class="takt-chart-legend" aria-label="圖表圖例">
+        <span><i class="within"></i>C/T（Takt 內）</span>
+        <span><i class="excess"></i>超出部分</span>
+        <span><i class="reference"></i>需求 Takt ${format(calc.takt, 1)} min/pcs</span>
+      </div>
+      <div class="takt-chart-scroll" tabindex="0" aria-label="各站 C/T 與需求 Takt 比較圖，可橫向捲動">
+        <div class="takt-chart-layout" style="--takt-chart-width:${chartWidth}px;--station-count:${calc.stations.length}">
+          <div class="takt-y-axis" aria-hidden="true">${ticks}</div>
+          <div class="takt-bars-area">
+            <div class="takt-grid-lines" aria-hidden="true">${gridLines}</div>
+            <div class="takt-reference-line" style="--takt-position:${taktPercent}" aria-hidden="true"><span>Takt ${format(calc.takt, 1)}</span></div>
+            <div class="takt-bars-grid">${bars}</div>
+          </div>
+          <div aria-hidden="true"></div>
+          <div class="takt-labels-grid">${labels}</div>
+        </div>
+      </div>
+    </section>`;
+}
+
+function renderTaktChart(calc) {
+  document.getElementById("taktChart").innerHTML = taktChartMarkup(calc);
+}
+
 function processCard(station, isBottleneck) {
   return `
     <div class="process-node">
@@ -212,6 +310,7 @@ function updateResults() {
   document.getElementById("lineTitle").textContent = state.lineName || "未命名產線";
   validate(calc);
   renderKpis(calc);
+  renderTaktChart(calc);
   renderVsm(calc);
   const addButton = document.getElementById("addStationButton");
   const atStationLimit = state.stations.length >= MAX_STATIONS;
@@ -472,6 +571,7 @@ function buildPrintReport(calc) {
           <section class="print-summary">
             <div class="print-section-title"><h2>即時結果</h2><span>生產條件與現況計算</span></div>
             <div class="print-kpi-grid">${printKpiMarkup(calc)}</div>
+            ${taktChartMarkup(calc, { print: true })}
           </section>
         ` : ""}
         <section class="print-vsm-section">
