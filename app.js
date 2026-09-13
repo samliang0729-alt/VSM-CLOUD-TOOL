@@ -612,88 +612,29 @@ function exportPdf() {
   document.title = originalTitle;
 }
 
-function setCellFormat(sheet, address, numberFormat) {
-  if (sheet[address]) sheet[address].z = numberFormat;
-}
-
-function exportExcel() {
+async function exportExcel() {
   const calc = calculate();
   if (!validate(calc)) {
     setExportStatus("請先修正輸入資料，再匯出 Excel。", true);
     return;
   }
-  if (typeof XLSX === "undefined") {
-    setExportStatus("Excel 匯出元件尚未載入，請確認網路後再試一次。", true);
+  if (typeof JSZip === "undefined" || typeof VsmExcelExport === "undefined") {
+    setExportStatus("Excel 匯出元件尚未載入，請重新整理後再試一次。", true);
     return;
   }
-
-  const status = calc.bottleneck?.load > 1 ? "產能不足" : calc.bottleneck?.load >= .85 ? "接近滿載" : "產能正常";
-  const summaryRows = [
-    ["VSM 產線分析", state.lineName],
-    ["匯出日期", new Date()],
-    [],
-    ["生產條件", "數值", "單位"],
-    ["月需求", n(state.monthlyDemand), "pcs"],
-    ["工作天", n(state.workDays), "天／月"],
-    ["班別", n(state.shifts), "班／日"],
-    ["每班工時", n(state.hoursPerShift), "hr"],
-    ["每班休息", n(state.breakMinutes), "min"],
-    ["計畫稼動率", n(state.availability) / 100, "%"],
-    ["淨可用時間", calc.netAvailableDay, "min／日"],
-    [],
-    ["計算結果", "數值", "單位"],
-    ["日需求", calc.dailyDemand, "pcs"],
-    ["需求 Takt", calc.takt, "min／pcs"],
-    ["瓶頸站", calc.bottleneck?.id || "—", calc.bottleneck?.name || ""],
-    ["瓶頸月產能", calc.bottleneck?.capacity ?? null, "pcs"],
-    ["瓶頸負荷率", calc.bottleneck?.load ?? null, "%"],
-    ["總現況 WIP", calc.currentWip, "pcs"],
-    ["總目標 WIP", calc.targetWip, "pcs"],
-    ["總 VA 時間", calc.vaMinutes, "min"],
-    ["總 NVA 等待", calc.nvaHours, "hr"],
-    ["Lead Time", calc.leadTime, "hr"],
-    ["產能判定", status, ""]
-  ];
-
-  const stationHeaders = ["順序", "站別", "製程名稱", "CT (min)", "MCT (min)", "OCTa (min)", "OCTb (min)", "C/O Changeover Time (min) / 換線／切換時間", "人數", "並行機台", "現況 WIP (pcs)", "緩衝 (min)", "良率", "月產能 (pcs)", "負荷率", "目標 WIP (pcs)", "現況等待 (hr)", "目標等待 (hr)", "狀態"];
-  const stationRows = calc.stations.map((station, index) => [
-    index + 1, station.id, station.name, n(station.ct), n(station.mct), n(station.octa), n(station.octb), n(station.octc),
-    n(station.people), n(station.machines), n(station.currentWip), n(station.bufferMin), n(station.yieldRate) / 100,
-    station.capacity, station.load, station.targetWip, station.currentWait, station.targetWait, station.status
-  ]);
-  const timelineRows = [["順序", "站別", "VA 加工時間 (min)", "站後 WIP (pcs)", "NVA 等待 (hr)"], ...calc.stations.map((station, index) => [index + 1, station.id, n(station.ct), n(station.currentWip), station.currentWait])];
-
-  const workbook = XLSX.utils.book_new();
-  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-  summarySheet["!cols"] = [{ wch: 21 }, { wch: 20 }, { wch: 14 }];
-  setCellFormat(summarySheet, "B2", "yyyy-mm-dd hh:mm");
-  setCellFormat(summarySheet, "B10", "0.0%");
-  setCellFormat(summarySheet, "B18", "0.0%");
-  ["B11", "B14", "B15", "B17", "B21", "B22", "B23"].forEach((cell) => setCellFormat(summarySheet, cell, "#,##0.0"));
-  ["B5", "B6", "B7", "B19", "B20"].forEach((cell) => setCellFormat(summarySheet, cell, "#,##0"));
-
-  const stationSheet = XLSX.utils.aoa_to_sheet([stationHeaders, ...stationRows]);
-  stationSheet["!cols"] = stationHeaders.map((header, index) => ({ wch: index === 2 ? 18 : Math.max(10, Math.min(16, header.length + 3)) }));
-  stationSheet["!autofilter"] = { ref: `A1:S${stationRows.length + 1}` };
-  for (let row = 2; row <= stationRows.length + 1; row++) {
-    setCellFormat(stationSheet, `M${row}`, "0.0%");
-    setCellFormat(stationSheet, `O${row}`, "0.0%");
-    ["D", "E", "F", "G", "H", "N", "Q", "R"].forEach((column) => setCellFormat(stationSheet, `${column}${row}`, "#,##0.0"));
-  }
-
-  const timelineSheet = XLSX.utils.aoa_to_sheet(timelineRows);
-  timelineSheet["!cols"] = [{ wch: 9 }, { wch: 13 }, { wch: 20 }, { wch: 18 }, { wch: 18 }];
-  for (let row = 2; row <= calc.stations.length + 1; row++) {
-    setCellFormat(timelineSheet, `C${row}`, "#,##0.0");
-    setCellFormat(timelineSheet, `E${row}`, "#,##0.0");
-  }
-
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "生產摘要");
-  XLSX.utils.book_append_sheet(workbook, stationSheet, "站別資料");
-  XLSX.utils.book_append_sheet(workbook, timelineSheet, "價值流時間軸");
+  setExportStatus("正在建立新版樣式 Excel…");
   try {
-    XLSX.writeFile(workbook, `VSM_${safeFileName(state.lineName)}_${dateStamp()}.xlsx`, { compression: true });
-    setExportStatus("Excel 已開始下載。");
+    const bytes = await VsmExcelExport.buildWorkbookBytes({ state, calc, exportedAt: new Date() });
+    const blob = new Blob([bytes], { type: VsmExcelExport.MIME_TYPE });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `VSM_${safeFileName(state.lineName)}_${dateStamp()}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setExportStatus("新版樣式 Excel 已開始下載。");
   } catch (error) {
     console.error("Excel export failed", error);
     setExportStatus("Excel 匯出失敗，請重新整理後再試。", true);
